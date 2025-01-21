@@ -1,0 +1,149 @@
+﻿@{
+    ViewData["Title"] = "Population Summary";
+}
+
+<h1>Population Summary</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <label for="CountryId">All Country:</label>
+        <select id="CountryId" class="form-control">
+            <option value="">Select Country</option>
+            @foreach (var country in (SelectList)ViewBag.Countries)
+            {
+                <option value="@country.Value">@country.Text</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label for="CityId">All State/Cities:</label>
+        <select id="CityId" class="form-control">
+            <option value="">Select State/Cities</option>
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label for="PopulationType">Population:</label>
+        <select id="PopulationType" class="form-control">
+            <option value="">Select Population Type</option>
+            <option value="Old">Old</option>
+            <option value="Young">Young</option>
+            <option value="Child">Child</option>
+        </select>
+    </div>
+</div>
+
+<br />
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Population Type</th>
+            <th>Number</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<br />
+
+<h4>Summary Report</h4>
+<p><strong>Three countries with highest population</strong></p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>SN</th>
+            <th>Country Name</th>
+            <th>Population</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("#CountryId").change(function () {
+                var countryId = $(this).val();
+                if (countryId) {
+                    $.getJSON('/Populations/GetCities', { countryId: countryId }, function (data) {
+                        var citySelect = $("#CityId");
+                        citySelect.empty();
+                        citySelect.append($('<option>').text("Select State/Cities").attr('value', ''));
+                        $.each(data, function (i, city) {
+                            citySelect.append($('<option>').text(city.name).attr('value', city.id));
+                        });
+                    });
+                } else {
+                    $("#CityId").empty().append($('<option>').text("Select State/Cities").attr('value', ''));
+                }
+            });
+
+            function fetchFilteredData() {
+                var countryId = $("#CountryId").val();
+                var cityId = $("#CityId").val();
+                var populationType = $("#PopulationType").val();
+
+                $.ajax({
+                    url: '/Populations/FilterData',
+                    type: 'GET',
+                    data: {
+                        countryId: countryId,
+                        cityId: cityId,
+                        populationType: populationType
+                    },
+                    success: function (response) {
+                        var tbody = $(".table tbody:first");
+                        tbody.empty();
+                        if (response.groupedData && response.groupedData.length > 0) {
+                            $.each(response.groupedData, function (index, data) {
+                                tbody.append(`
+                                            <tr>
+                                                <td>${data.populationType}</td>
+                                                <td>${data.totalNumber.toLocaleString()}</td>
+                                            </tr>
+                                        `);
+                            });
+                        } else {
+                            tbody.append(`
+                                        <tr>
+                                            <td colspan="2">No data available</td>
+                                        </tr>
+                                    `);
+                        }
+
+                        var summaryTbody = $(".table:last tbody");
+                        summaryTbody.empty();
+                        if (response.topCountries && response.topCountries.length > 0) {
+                            $.each(response.topCountries, function (index, country) {
+                                summaryTbody.append(`
+                                            <tr>
+                                                <td>${index + 1}</td>
+                                                <td>${country.countryName}</td>
+                                                <td>${country.population.toLocaleString()}</td>
+                                            </tr>
+                                        `);
+                            });
+                        } else {
+                            summaryTbody.append(`
+                                        <tr>
+                                            <td colspan="3">No data available</td>
+                                        </tr>
+                                    `);
+                        }
+                    },
+                    error: function () {
+                        alert("An error occurred while fetching data.");
+                    }
+                });
+            }
+
+            fetchFilteredData();
+            $("#CountryId, #CityId, #PopulationType").change(function () {
+                fetchFilteredData();
+            });
+        });
+    </script>
+}

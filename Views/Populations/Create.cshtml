@@ -1,0 +1,97 @@
+﻿@model test.DTO.PopulationDTO
+@{
+    ViewData["Title"] = "Add Population";
+}
+
+<h1>Add Population</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<form asp-action="Create" method="post">
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="CountryId">Country Name:</label>
+
+                <select asp-for="CountryId" class="form-control" id="CountryId">
+                    <option value="">Select Country</option>
+                    @foreach (var country in (SelectList)ViewBag.Countries)
+                    {
+                        <option value="@country.Value">@country.Text</option>
+                    }
+                </select>
+                <span asp-validation-for="CountryId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label for="CityId">City/State:</label>
+                <select asp-for="CityId" class="form-control" id="CityId">
+                    <option value="">Select State/Cities</option>
+                </select>
+                <span asp-validation-for="CityId" class="text-danger"></span>
+            </div>
+            <input type="hidden" id="SelectedCityName" name="CityName" />
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="AgeGroup">Age Group:</label>
+                <select asp-for="AgeGroup" class="form-control" asp-items="ViewBag.AgeGroups">
+                    <option value="">Select Age Group</option>
+                </select>
+                <span asp-validation-for="AgeGroup" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label>Population:</label>
+                <div class="row">
+                    <div class="col">
+                        <input asp-for="MalePopulation" class="form-control" placeholder="Male" />
+                        <span asp-validation-for="MalePopulation" class="text-danger"></span>
+                    </div>
+                    <div class="col">
+                        <input asp-for="FemalePopulation" class="form-control" placeholder="Female" />
+                        <span asp-validation-for="FemalePopulation" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("#CountryId").change(function () {
+                var countryId = $(this).val();
+                if (countryId) {
+                    $.getJSON('/Populations/GetCities', { countryId: countryId }, function (data) {
+                        console.log(data);
+                        var citySelect = $("#CityId");
+                        citySelect.empty();
+                        citySelect.append($('<option>').text("Select State/Cities").attr('value', ''));
+                        $.each(data, function (i, city) {
+                            citySelect.append($('<option>').text(city.name).attr('value', city.id));
+                        });
+                    });
+                } else {
+                    $("#CityId").empty().append($('<option>').text("Select State/Cities").attr('value', ''));
+                }
+            });
+
+            $("#CityId").change(function () {
+                var selectedOption = $(this).find("option:selected");
+                var cityId = selectedOption.val();
+                var cityName = selectedOption.text();
+                console.log(cityId);
+                console.log(cityName);
+                $("#SelectedCityName").val(cityName);
+            });
+        });
+    </script>
+}

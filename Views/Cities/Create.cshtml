@@ -1,0 +1,94 @@
+﻿@model test.Models.City
+
+@{
+    ViewData["Title"] = "Add City";
+}
+
+<h1>Add City</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<div class="col-md-4">
+    <form asp-action="Create" method="post">
+        <div class="form-group">
+            <label for="CountryId">Country Name:</label>
+            <select asp-for="CountryId" class="form-control" asp-items="ViewBag.Countries" id="CountryDropdown">
+                <option value="">Select Country</option>
+            </select>
+            <span asp-validation-for="CountryId" class="text-danger"></span>
+        </div>
+        <div class="form-group">
+            <label asp-for="CityName">City/State:</label>
+            <input asp-for="CityName" class="form-control" />
+            <span asp-validation-for="CityName" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary  mt-2">Add City</button>
+    </form>
+</div>
+
+<h2 class="mt-4">Cities in Selected Country</h2>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>SN</th>
+            <th>City Name</th>
+        </tr>
+    </thead>
+    <tbody id="CityTableBody">
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#CountryDropdown').change(function () {
+                const countryId = $(this).val();
+                const cityTableBody = $('#CityTableBody');
+                cityTableBody.empty();
+
+                if (countryId) {
+                    $.ajax({
+                        url: '@Url.Action("GetCitiesByCountry", "Cities")',
+                        type: 'GET',
+                        data: { countryId: countryId },
+                        success: function (cities) {
+                            if (cities.length > 0) {
+                                $.each(cities, function (index, city) {
+                                    const row = `<tr>
+                                                <td>${index + 1}</td>
+                                                <td>${city.name}</td>
+                                            </tr>`;
+                                    cityTableBody.append(row);
+                                });
+                            } else {
+                                const noDataRow = `<tr>
+                                            <td colspan="2">No cities available</td>
+                                        </tr>`;
+                                cityTableBody.append(noDataRow);
+                            }
+                        },
+                        error: function () {
+                            const errorRow = `<tr>
+                                        <td colspan="2">Error fetching cities</td>
+                                    </tr>`;
+                            cityTableBody.append(errorRow);
+                        }
+                    });
+                } else {
+                    const emptyRow = `<tr>
+                                <td colspan="2">No cities available</td>
+                            </tr>`;
+                    cityTableBody.append(emptyRow);
+                }
+            });
+
+            $('#CountryDropdown').trigger('change');
+        });
+    </script>
+}

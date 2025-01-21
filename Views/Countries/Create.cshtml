@@ -1,0 +1,77 @@
+﻿@model test.Models.Country
+
+@{
+    ViewData["Title"] = "Add Country";
+}
+
+<h1>Add Country</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["SuccessMessage"]
+    </div>
+}
+<div class="col-md-4">
+    <form asp-action="Create" method="post">
+        <div class="form-group">
+            <label asp-for="CountryName">Country Name:</label>
+            <input asp-for="CountryName" class="form-control" />
+            <span asp-validation-for="CountryName" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Add Country</button>
+    </form>
+</div>
+
+<h2 class="mt-4">Countries</h2>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>SN</th>
+            <th>Country Name</th>
+        </tr>
+    </thead>
+    <tbody id="CountryTableBody">
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            function loadCountries() {
+                const countryTableBody = $('#CountryTableBody');
+                countryTableBody.empty();
+
+                $.ajax({
+                    url: '@Url.Action("GetCountries", "Countries")', 
+                    type: 'GET',
+                    success: function (countries) {
+                        if (countries.length > 0) {
+                            $.each(countries, function (index, country) {
+                                const row = `<tr>
+                                                        <td>${index + 1}</td>
+                                                        <td>${country.name}</td>
+                                                    </tr>`;
+                                countryTableBody.append(row);
+                            });
+                        } else {
+                            const noDataRow = `<tr>
+                                                    <td colspan="2">No countries available</td>
+                                                </tr>`;
+                            countryTableBody.append(noDataRow);
+                        }
+                    },
+                    error: function () {
+                        const errorRow = `<tr>
+                                                <td colspan="2">Error fetching countries</td>
+                                            </tr>`;
+                        countryTableBody.append(errorRow);
+                    }
+                });
+            }
+
+            loadCountries();
+        });
+    </script>
+}
