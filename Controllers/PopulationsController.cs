@@ -4,16 +4,19 @@ using Microsoft.EntityFrameworkCore;
 using test.Data;
 using test.DTO;
 using test.Models;
+using test.Repository.Interface;
 
 namespace test.Controllers
 {
     public class PopulationsController : Controller
     {
         private readonly TestDb _context;
+        private readonly IPopulationRepository _populationRepository;
 
-        public PopulationsController(TestDb context)
+        public PopulationsController(TestDb context, IPopulationRepository populationRepository)
         {
             _context = context;
+            _populationRepository = populationRepository;
         }
 
         [HttpGet]
@@ -31,15 +34,14 @@ namespace test.Controllers
             {
                 try
                 {
-                    var existingPopulation = await _context.Populations
-                        .FirstOrDefaultAsync(p => p.CountryID == population.CountryId && p.CityId == population.CityId && p.AgeGroup == population.AgeGroup);
+                    var existingPopulation = await _populationRepository.GetExistingPopulationAsync(population.CountryId, population.CityId, population.AgeGroup);
 
                     if (existingPopulation != null)
                     {
                         existingPopulation.FemalePopulation = population.FemalePopulation;
                         existingPopulation.MalePopulation = population.MalePopulation;
 
-                        _context.Update(existingPopulation);
+                        await _populationRepository.UpdatePopulationAsync(existingPopulation);
                         TempData["SuccessMessage"] = "Population data updated successfully!";
                     }
                     else
@@ -53,7 +55,7 @@ namespace test.Controllers
                             MalePopulation = population.MalePopulation,
                         };
 
-                        _context.Add(newPop);
+                        await _populationRepository.AddPopulationAsync(newPop);
                         TempData["SuccessMessage"] = "Population data added successfully!";
                     }
 
@@ -91,37 +93,9 @@ namespace test.Controllers
                 ? new SelectList(_context.Cities.Where(c => c.CountryId == countryId), "CityId", "CityName")
                 : new SelectList(Enumerable.Empty<SelectListItem>());
 
-            var populations = _context.Populations
-                .Include(p => p.City)
-                .ThenInclude(c => c.Country)
-                .AsQueryable();
+            var groupedData = await _populationRepository.GetPopulationSummaryAsync(countryId, cityId, populationType);
 
-            if (countryId.HasValue)
-                populations = populations.Where(p => p.City.CountryId == countryId);
-
-            if (cityId.HasValue)
-                populations = populations.Where(p => p.CityId == cityId);
-
-            if (!string.IsNullOrEmpty(populationType))
-                populations = populations.Where(p => p.AgeGroup == populationType);
-
-            var groupedData = await populations
-                .GroupBy(p => p.AgeGroup)
-                .Select(g => new
-                {
-                    PopulationType = g.Key,
-                    TotalNumber = g.Sum(p => p.MalePopulation + p.FemalePopulation)
-                }).ToListAsync();
-
-            var topCountries = await _context.Countries
-                .Select(c => new
-                {
-                    CountryName = c.CountryName,
-                    Population = c.Cities.Sum(ci => ci.Populations.Sum(p => p.MalePopulation + p.FemalePopulation))
-                })
-                .OrderByDescending(c => c.Population)
-                .Take(3)
-                .ToListAsync();
+            var topCountries = await _populationRepository.GetTopCountriesAsync(3);
 
             ViewBag.GroupedData = groupedData;
             ViewBag.TopCountries = topCountries;
@@ -133,48 +107,14 @@ namespace test.Controllers
         [HttpGet]
         public async Task<JsonResult> FilterData(int? countryId, int? cityId, string populationType = null)
         {
-            var populations = _context.Populations
-                .Include(p => p.City)
-                .ThenInclude(c => c.Country)
-                .AsQueryable();
-
-            if (countryId.HasValue)
-                populations = populations.Where(p => p.City.CountryId == countryId);
-
-            if (cityId.HasValue)
-                populations = populations.Where(p => p.CityId == cityId);
-
-            if (!string.IsNullOrEmpty(populationType))
-                populations = populations.Where(p => p.AgeGroup == populationType);
-
-            var groupedData = await populations
-                .GroupBy(p => p.AgeGroup)
-                .Select(g => new GroupedPopulationData
-                {
-                    PopulationType = g.Key ?? "Unknown",
-                    TotalNumber = g.Sum(p => p.MalePopulation + p.FemalePopulation)
-                }).ToListAsync();
+            var groupedData = await _populationRepository.FilterPopulationsAsync(countryId, cityId, populationType);
 
             if (!countryId.HasValue && !cityId.HasValue && string.IsNullOrEmpty(populationType))
             {
-                groupedData = await _context.Populations
-                    .GroupBy(p => p.AgeGroup)
-                    .Select(g => new GroupedPopulationData
-                    {
-                        PopulationType = g.Key ?? "Unknown",
-                        TotalNumber = g.Sum(p => p.MalePopulation + p.FemalePopulation)
-                    }).ToListAsync();
+                groupedData = await _populationRepository.GetAllGroupedPopulationsAsync();
             }
 
-            var topCountries = await _context.Countries
-                .Select(c => new
-                {
-                    CountryName = c.CountryName,
-                    Population = c.Cities.Sum(ci => ci.Populations.Sum(p => p.MalePopulation + p.FemalePopulation))
-                })
-                .OrderByDescending(c => c.Population)
-                .Take(3)
-                .ToListAsync();
+            var topCountries = await _populationRepository.GetTopCountriesAsync(3);
 
             return Json(new { groupedData, topCountries });
         }

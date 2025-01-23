@@ -1,40 +1,44 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using test.Data;
+using test.DTO;
 using test.Models;
+using test.Repository.Interface;
 
 namespace test.Controllers
 {
     public class CitiesController : Controller
     {
         private readonly TestDb _context;
+        private readonly ICitiesRepository _citiesRepository;
 
-        public CitiesController(TestDb context)
+        public CitiesController(TestDb context, ICitiesRepository citiesRepository)
         {
             _context = context;
+            _citiesRepository = citiesRepository;
         }
 
         [HttpGet]
         public IActionResult Create()
         {
             ViewBag.Countries = new SelectList(_context.Countries, "CountryId", "CountryName");
-            return View(new City());
+            return View(new CitiesDTO());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(City city)
+        public async Task<IActionResult> Create(CitiesDTO cities)
         {
-            if (_context.Cities.Any(c => c.CountryId == city.CountryId && c.CityName == city.CityName))
+            if (await _citiesRepository.CityExists(cities.CountryId, cities.CityName))
             {
                 ModelState.AddModelError("CityName", "A city with the same name already exists in the selected country.");
             }
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Add(city);
-                    await _context.SaveChangesAsync();
+                    await _citiesRepository.CreateCity(cities);
                     TempData["SuccessMessage"] = "City added successfully!";
                     return RedirectToAction(nameof(Create));
                 }
@@ -45,7 +49,7 @@ namespace test.Controllers
             }
 
             ViewBag.Countries = new SelectList(_context.Countries, "CountryId", "CountryName");
-            return View(city);
+            return View(cities);
         }
 
 

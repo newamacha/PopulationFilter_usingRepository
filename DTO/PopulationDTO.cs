@@ -14,9 +14,22 @@ namespace test.DTO
 
         [Required]
         public int MalePopulation { get; set; }
-
+        [Required]
         public int CountryId { get; set; }
         [Required]
         public int FemalePopulation { get; set; }
     }
+
+    public class PopulationSummaryDTO
+    {
+        public string PopulationType { get; set; }
+        public int TotalNumber { get; set; }
+    }
+
+    public class TopCountryDTO
+    {
+        public string CountryName { get; set; }
+        public int Population { get; set; }
+    }
+
 }

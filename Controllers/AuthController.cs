@@ -1,15 +1,19 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using test.Data;
+using test.DTO;
+using test.Repository.Interface;
 
 namespace test.Controllers
 {
     public class AuthController : Controller
     {
         private readonly TestDb _testDb;
+        private readonly IAuthRepository _authRepository;
 
-        public AuthController(TestDb testDb)
+        public AuthController(TestDb testDb, IAuthRepository authRepository)
         {
             _testDb = testDb;
+            _authRepository = authRepository;
         }
 
         public IActionResult Login()
@@ -19,18 +23,18 @@ namespace test.Controllers
 
         }
         [HttpPost]
-        [IgnoreAntiforgeryToken]
-        public IActionResult Login(string username, string password)
+        public async Task<IActionResult> Login(UserDTO userDTO)
         {
             try
             {
-                if (_testDb.Users.Any(u => u.Username == username && u.Password == password))
+                if (await _authRepository.UserExists(userDTO.Username, userDTO.Password))
                 {
                     return RedirectToAction("Summary", "Populations");
                 }
                 else
                 {
-                    return RedirectToAction("Login", "Auth");
+                    ModelState.AddModelError("", "Invalid username or password.");
+                    return View(userDTO);
                 }
             }
             catch (Exception ex) 

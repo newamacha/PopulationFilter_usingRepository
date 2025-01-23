@@ -6,17 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using test.Data;
+using test.DTO;
 using test.Models;
+using test.Repository.Interface;
 
 namespace test.Controllers
 {
     public class CountriesController : Controller
     {
         private readonly TestDb _context;
+        private readonly ICountriesRepository _countriesRepository;
 
-        public CountriesController(TestDb context)
+        public CountriesController(TestDb context, ICountriesRepository countriesRepository)
         {
             _context = context;
+            _countriesRepository = countriesRepository;
         }
 
         [HttpGet]
@@ -27,27 +31,27 @@ namespace test.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Country country)
-       {
-            if (_context.Countries.Any(c => c.CountryName == country.CountryName))
+        public async Task<IActionResult> Create(CountriesDTO countries)
+        {
+            if (await _countriesRepository.CountryExists(countries.CountryName))
             {
                 ModelState.AddModelError("CountryName", "Country name already exists.");
             }
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Add(country);
-                    await _context.SaveChangesAsync();
+                    await _countriesRepository.CreateCountry(countries);
                     TempData["SuccessMessage"] = "Country added successfully!";
-                    return RedirectToAction(nameof(Create)); 
+                    return RedirectToAction(nameof(Create));
                 }
                 catch (Exception ex)
                 {
                     ModelState.AddModelError("", "An error occurred while saving the country. Please try again.");
                 }
-            }
-            return View(country); 
+            }  
+            return View(countries); 
         }
 
         [HttpGet]
